@@ -2,7 +2,7 @@
 #
 # Text::Smart::Plugin by Daniel Berrange <dan@berrange.com>
 #
-# Copyright (C) 2004 Daniel P. Berrange <dan@berrange.com>
+# Copyright (C) 2004-2006 Daniel P. Berrange <dan@berrange.com>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,11 +28,16 @@
 
 =head1 SYNOPSIS
 
+When creating the L<Template> processing object define a
+plugin for smart text:
+
     my $tt = new Template({
 	PLUGINS => {
 	    'smarttext' => 'Text::Smart::Plugin'
 	    }
     });
+
+Then in a template file:
 
      [% USE smarttext(type => 'HTML') %]
      [% FILTER smarttext %]
@@ -41,19 +46,40 @@
 
      [% END %]
 
+=head1 DESCRIPTION
+
+This module provides a plugin for the Template-Toolkit to
+enable the use of 'smart text', whose syntax is defined by
+the L<Text::Smart> module. See that module's manual pages
+for details of the markup allowed. See the synopsis section
+above for how to use this module in combination with the
+Template toolkit.
+
+=head1 METHODS
+
 =over 4
 
 =cut
 
 package Text::Smart::Plugin;
 
+use strict;
+use warnings;
+
 use base qw(Template::Plugin);
-use vars qw($VERSION);
 
 use Text::Smart::HTML;
-use Carp qw(confess);
 
-$VERSION = "1.0.0";
+our $VERSION = "1.0.1";
+
+=item my $plugin = Text::Smart::Plugin->new()
+
+This creates a new instance of the plugin. This method is called
+by the Template Toolkit engine to instantiate the plugin. See the
+docs for L<Template> for details about the contract between the
+engine and this plugin's constructor.
+
+=cut
 
 sub new {
     my $proto = shift;
@@ -64,6 +90,7 @@ sub new {
     my $filter_factory;
     my $self;
     
+    my $plugin;
     if ($options) {
 	# create a closure to generate filters with additional options
 	$filter_factory = sub {
@@ -71,7 +98,7 @@ sub new {
 	    my $filtopt = ref $_[-1] eq 'HASH' ? pop : { };
 	    @$filtopt{ keys %$options } = values %$options;
 	    return sub {
-		tt_smarttext(@_, $filtopt);
+		_tt_smarttext(@_, $filtopt);
 	    };
 	};
 
@@ -79,7 +106,7 @@ sub new {
 	$plugin = sub {
 	    my $plugopt = ref $_[-1] eq 'HASH' ? pop : { };
 	    @$plugopt{ keys %$options } = values %$options;
-	    tt_smarttext(@_, $plugopt);
+	    _tt_smarttext(@_, $plugopt);
 	};
     }
     else {
@@ -88,12 +115,12 @@ sub new {
 	    my $context = shift;
 	    my $filtopt = ref $_[-1] eq 'HASH' ? pop : { };
 	    return sub {
-		tt_smarttext(@_, $filtopt);
+		_tt_smarttext(@_, $filtopt);
 	    };
 	};
 
 	# plugin without options can be static
-	$plugin = \&tt_smarttext;
+	$plugin = \&_tt_smarttext;
     }
 
     # now define the filter and return the plugin
@@ -101,7 +128,7 @@ sub new {
     return $plugin;
 }
 
-sub tt_smarttext {
+sub _tt_smarttext {
     my $options = ref $_[-1] eq 'HASH' ? pop : { };
     my $type = defined $options->{type} ? $options->{type} : "HTML";
     if ($type eq 'HTML') {
@@ -109,7 +136,7 @@ sub tt_smarttext {
 
 	return $proc->process(join('', @_));
     } else {
-	confess "Unknown type $type";
+	die "Unknown smart text markup type '$type'. Suported types are 'HTML'";
     }
 }
 
@@ -117,7 +144,7 @@ sub tt_smarttext {
 
 __END__
 
-=back 4
+=back
 
 =head1 AUTHORS
 
@@ -125,11 +152,11 @@ Daniel Berrange <dan@berrange.com>
 
 =head1 COPYRIGHT
 
-Copyright (C) 2004 Daniel P. Berrange <dan@berrange.com>
+Copyright (C) 2004-2006 Daniel P. Berrange <dan@berrange.com>
 
 =head1 SEE ALSO
 
-L<perl(1)>, L<Text::Smart(1)>, L<Template(1)>
+C<perl>, L<Text::Smart(1)>, L<Template(1)>
 
 =cut
                                                                                                          
